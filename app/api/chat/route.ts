@@ -88,7 +88,7 @@ Remember: You are not just an AI providing information - you are MAR, Johnniel M
       prompt: `${message}
 
 Context: Respond as MAR, the sophisticated AI companion. If the user mentions topics that would benefit from visual context (food, places, objects), provide relevant suggestions. Always maintain your genius-level intelligence while being approachable and helpful.`,
-      maxTokens: 600,
+      maxTokens: 900,
     });
 
     // Initialize response data
