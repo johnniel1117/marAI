@@ -48,11 +48,12 @@ const languages: Language[] = [
 ]
 
 const commissionSuggestions: SuggestedMessage[] = [
-  { text: "What are your current commission rates?", icon: "💰", shouldRedirect: false }, // Only this stays in chat
-  { text: "Hi! I'm interested in getting a portrait commission. Can you help me?", icon: "🎨", shouldRedirect: true },
-  { text: "I'd like to order an A4 portrait, is there a slot available?", icon: "📝", shouldRedirect: true },
-  { text: "Do you accept rush orders for portraits?", icon: "⚡", shouldRedirect: true },
+  { text: "What are your commission rates?", icon: "💰", shouldRedirect: false },
+  { text: "What portrait sizes do you offer?", icon: "🖼️", shouldRedirect: false },
+  { text: "How much for an A4 portrait with two people?", icon: "👥", shouldRedirect: false },
+  { text: "Do you accept rush orders and how much extra?", icon: "⚡", shouldRedirect: false },
 ]
+
 
 function convertMarkdownLinksToHTML(text: string): string {
   return text.replace(
@@ -514,11 +515,18 @@ export default function MarAIAssistant() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-emerald-500/30 hover:scrollbar-thumb-emerald-500/50 scrollbar-thumb-rounded-full">
               {messages.length === 0 ? (
                 <div className="text-center text-emerald-200/60 py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">
-                    <MessageCircle className="w-8 h-8 text-white" />
+                  <div className="w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center">
+                   
+              <Image
+                src="/images/marlogo.png"
+                alt="MAR Logo"
+                width={100}
+                height={100}
+                className="invert drop-shadow-lg"
+              />
                   </div>
-                  <p className="text-lg text-white font-light">Start a conversation with MAR!</p>
-                  <p className="text-sm text-white/70 mt-2">Ask about portrait commission rates or try these:</p>
+                  {/* <p className="text-lg text-white font-light">Start a conversation with MAR!</p> */}
+                  <p className=" text-white/70 font-light text-sm">Ask about portrait commission rates or try these:</p>
                   
                   <div className="mt-6 space-y-2">
                     {commissionSuggestions.map((suggestion, index) => (
