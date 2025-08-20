@@ -29,6 +29,12 @@ interface Language {
   flag: string
 }
 
+interface SuggestedMessage {
+  text: string
+  icon: string
+  shouldRedirect?: boolean
+}
+
 const languages: Language[] = [
   { code: "en-US", name: "English", flag: "🇺🇸" },
   { code: "ceb-PH", name: "Cebuano", flag: "🇵🇭" },
@@ -39,6 +45,13 @@ const languages: Language[] = [
   { code: "ja-JP", name: "Japanese", flag: "🇯🇵" },
   { code: "ko-KR", name: "Korean", flag: "🇰🇷" },
   { code: "zh-CN", name: "Chinese", flag: "🇨🇳" },
+]
+
+const commissionSuggestions: SuggestedMessage[] = [
+  { text: "What are your current commission rates?", icon: "💰", shouldRedirect: false }, // Only this stays in chat
+  { text: "Hi! I'm interested in getting a portrait commission. Can you help me?", icon: "🎨", shouldRedirect: true },
+  { text: "I'd like to order an A4 portrait, is there a slot available?", icon: "📝", shouldRedirect: true },
+  { text: "Do you accept rush orders for portraits?", icon: "⚡", shouldRedirect: true },
 ]
 
 function convertMarkdownLinksToHTML(text: string): string {
@@ -110,7 +123,7 @@ export default function MarAIAssistant() {
     if (typeof window !== "undefined") {
       synthRef.current = window.speechSynthesis
     }
-  }, [selectedLanguage]) // Added selectedLanguage dependency
+  }, [selectedLanguage])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -127,7 +140,6 @@ export default function MarAIAssistant() {
       document.body.style.overflow = "unset"
     }
 
-    // Cleanup function to reset overflow when component unmounts
     return () => {
       document.body.style.overflow = "unset"
     }
@@ -158,7 +170,7 @@ export default function MarAIAssistant() {
         "Google Filipino",
         "Microsoft Filipino Female",
         "Microsoft Filipino",
-        "Google US English Female", // Natural fallback
+        "Google US English Female",
         "Microsoft Zira Desktop - English (United States)",
       ]
     } else if (selectedLanguage.code === "ceb-PH") {
@@ -189,7 +201,6 @@ export default function MarAIAssistant() {
     } else {
       const langCode = selectedLanguage.code.split("-")[0]
       const langVoices = voices.filter((voice) => voice.lang.startsWith(langCode))
-      // Prefer female voices for more natural sound
       const femaleVoices = langVoices.filter(
         (voice) =>
           voice.name.toLowerCase().includes("female") ||
@@ -215,7 +226,6 @@ export default function MarAIAssistant() {
     let processedText = text
 
     if (selectedLanguage.code === "ceb-PH") {
-      // Enhanced Cebuano word pronunciation improvements
       processedText = processedText
         .replace(/\bnga\b/gi, "ngah")
         .replace(/\bang\b/gi, "ahng")
@@ -238,7 +248,6 @@ export default function MarAIAssistant() {
         .replace(/\bjud\b/gi, "jood")
         .replace(/\bgyud\b/gi, "gyood")
     } else if (selectedLanguage.code === "fil-PH") {
-      // Filipino pronunciation improvements
       processedText = processedText
         .replace(/\bng\b/gi, "nahng")
         .replace(/\bsa\b/gi, "sah")
@@ -251,7 +260,6 @@ export default function MarAIAssistant() {
         .replace(/\bsila\b/gi, "see-lah")
     }
 
-    // Remove excessive punctuation for smoother speech
     processedText = processedText
       .replace(/[.]{2,}/g, ".")
       .replace(/[!]{2,}/g, "!")
@@ -285,54 +293,86 @@ export default function MarAIAssistant() {
   }
 
   const speak = (text: string) => {
-    if (synthRef.current && speechEnabled) {
-      synthRef.current.cancel()
-
-      const processedText = preprocessTextForSpeech(text)
-      const utterance = new SpeechSynthesisUtterance(processedText)
-
-      const bestVoice = getBestVoice()
-      if (bestVoice) {
-        utterance.voice = bestVoice
-      }
-
-      utterance.rate = 1.0 // Natural conversational pace
-      utterance.pitch = 0.95 // Slightly lower for more natural sound
-      utterance.volume = 0.9
-
-      // Language-specific natural settings
-      if (selectedLanguage.code === "fil-PH") {
-        utterance.rate = 0.95 // Slightly slower for Filipino clarity
-        utterance.pitch = 0.92 // Lower pitch for better pronunciation
-      } else if (selectedLanguage.code === "ceb-PH") {
-        utterance.rate = 0.9 // Slower for Cebuano clarity
-        utterance.pitch = 0.88 // Lower pitch for better Bisayan pronunciation
-      } else if (selectedLanguage.code.startsWith("es")) {
-        utterance.rate = 1.05 // Natural Spanish pace
-        utterance.pitch = 0.96
-      } else if (selectedLanguage.code.startsWith("fr")) {
-        utterance.rate = 0.98 // Slightly slower French
-        utterance.pitch = 1.0
-      } else if (selectedLanguage.code.startsWith("en")) {
-        utterance.rate = 1.1 // Natural English conversation pace
-        utterance.pitch = 0.94 // Slightly lower for warmth
-      }
-
-      utterance.onstart = () => setIsSpeaking(true)
-      utterance.onend = () => {
-        setIsSpeaking(false)
-        setCurrentMessage("Ready to help you with anything...")
-      }
-      utterance.onerror = () => setIsSpeaking(false)
-
-      synthRef.current.speak(utterance)
+    // Check if speech is enabled before speaking
+    if (!speechEnabled || !synthRef.current) {
+      console.log("[v0] Speech disabled or synthesis not available")
+      return
     }
+
+    console.log("[v0] Speaking:", text)
+    synthRef.current.cancel()
+
+    const processedText = preprocessTextForSpeech(text)
+    const utterance = new SpeechSynthesisUtterance(processedText)
+
+    const bestVoice = getBestVoice()
+    if (bestVoice) {
+      utterance.voice = bestVoice
+    }
+
+    utterance.rate = 1.0
+    utterance.pitch = 0.95
+    utterance.volume = 0.9
+
+    // Language-specific natural settings
+    if (selectedLanguage.code === "fil-PH") {
+      utterance.rate = 0.95
+      utterance.pitch = 0.92
+    } else if (selectedLanguage.code === "ceb-PH") {
+      utterance.rate = 0.9
+      utterance.pitch = 0.88
+    } else if (selectedLanguage.code.startsWith("es")) {
+      utterance.rate = 1.05
+      utterance.pitch = 0.96
+    } else if (selectedLanguage.code.startsWith("fr")) {
+      utterance.rate = 0.98
+      utterance.pitch = 1.0
+    } else if (selectedLanguage.code.startsWith("en")) {
+      utterance.rate = 1.1
+      utterance.pitch = 0.94
+    }
+
+    utterance.onstart = () => {
+      console.log("[v0] Speech started")
+      setIsSpeaking(true)
+    }
+    
+    utterance.onend = () => {
+      console.log("[v0] Speech ended")
+      setIsSpeaking(false)
+      setCurrentMessage("Ready to help you with anything...")
+    }
+    
+    utterance.onerror = (error) => {
+      console.log("[v0] Speech error:", error)
+      setIsSpeaking(false)
+    }
+
+    synthRef.current.speak(utterance)
   }
 
   const stopSpeaking = () => {
     if (synthRef.current) {
+      console.log("[v0] Stopping speech")
       synthRef.current.cancel()
       setIsSpeaking(false)
+    }
+  }
+
+  // Function to redirect to MARQ Facebook page
+  const redirectToMarqPage = () => {
+    window.open('https://www.facebook.com/marqph', '_blank')
+  }
+
+  const handleSuggestedMessageClick = (suggestion: SuggestedMessage) => {
+    if (suggestion.shouldRedirect) {
+      // Redirect to MARQ Facebook page
+      redirectToMarqPage()
+      setCurrentMessage(`Redirecting to MARQ Facebook page for: "${suggestion.text}"`)
+    } else {
+      // Handle in chat (only for commission rates)
+      setInputText("")
+      handleUserInput(suggestion.text)
     }
   }
 
@@ -341,7 +381,6 @@ export default function MarAIAssistant() {
 
     console.log("[v0] Processing user input:", transcript)
 
-    // Add user message to chat
     const userMessage: Message = {
       id: Date.now().toString(),
       text: transcript,
@@ -374,18 +413,18 @@ export default function MarAIAssistant() {
         throw new Error("Invalid response format")
       }
 
-      // Add AI response to chat
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: data.message,
         isUser: false,
         timestamp: new Date(),
-        image: data.image, // Added image support
-        location: data.location, // Added location support
+        image: data.image,
+        location: data.location,
       }
       setMessages((prev) => [...prev, aiMessage])
       setCurrentMessage(data.message)
 
+      // Only speak if speech is enabled
       if (speechEnabled) {
         speak(data.message)
       }
@@ -393,6 +432,8 @@ export default function MarAIAssistant() {
       console.error("[v0] Error:", error)
       const errorMsg = "I apologize, but I encountered a technical difficulty. Please try again."
       setCurrentMessage(errorMsg)
+      
+      // Only speak error if speech is enabled
       if (speechEnabled) {
         speak(errorMsg)
       }
@@ -424,6 +465,19 @@ export default function MarAIAssistant() {
     setCurrentMessage("Conversation cleared. How can I help you today?")
   }
 
+  // Handle speech toggle
+  const toggleSpeech = () => {
+    const newSpeechEnabled = !speechEnabled
+    setSpeechEnabled(newSpeechEnabled)
+    
+    if (!newSpeechEnabled && isSpeaking) {
+      // If turning off speech while speaking, stop current speech
+      stopSpeaking()
+    }
+    
+    setCurrentMessage(newSpeechEnabled ? "Speech enabled" : "Speech disabled")
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 flex flex-col font-sans relative overflow-hidden">
       {showChat && (
@@ -432,13 +486,6 @@ export default function MarAIAssistant() {
             {/* Chat Header */}
             <div className="flex items-center justify-between p-6 border-b border-emerald-400/20 bg-gradient-to-r from-emerald-900/20 to-transparent">
               <div className="flex items-center gap-3">
-                {/* <Image
-                  src="/images/mar-logo.png"
-                  alt="MAR Logo"
-                  width={32}
-                  height={32}
-                  className="invert drop-shadow-lg"
-                /> */}
                 <h3 className="text-xl font-semibold text-white drop-shadow-sm">Chat with MAR</h3>
               </div>
               <div className="flex items-center gap-2">
@@ -467,11 +514,34 @@ export default function MarAIAssistant() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-emerald-500/30 hover:scrollbar-thumb-emerald-500/50 scrollbar-thumb-rounded-full">
               {messages.length === 0 ? (
                 <div className="text-center text-emerald-200/60 py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full  flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">
                     <MessageCircle className="w-8 h-8 text-white" />
                   </div>
                   <p className="text-lg text-white font-light">Start a conversation with MAR!</p>
-                  <p className="text-sm text-white mt-2">Ask MAR about Johnniel Mar’s portrait commission rates — come and try!</p>
+                  <p className="text-sm text-white/70 mt-2">Ask about portrait commission rates or try these:</p>
+                  
+                  <div className="mt-6 space-y-2">
+                    {commissionSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestedMessageClick(suggestion)}
+                        className="w-full p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-emerald-400/20 text-white/90 text-sm text-left transition-all duration-300 flex items-center gap-2"
+                      >
+                        <span>{suggestion.icon}</span>
+                        <span>{suggestion.text}</span>
+                        {suggestion.shouldRedirect && (
+                          <span className="ml-auto text-xs text-emerald-300/70">→ MARQ Page</span>
+                        )}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={redirectToMarqPage}
+                      className="block w-full mt-4 p-3 bg-emerald-500/20 hover:bg-emerald-500/30 rounded-xl border border-emerald-400/30 text-white text-sm text-center transition-all duration-300"
+                    >
+                      💬 Message MARQ directly on Facebook
+                    </button>
+                  </div>
                 </div>
               ) : (
                 messages.map((message) => (
@@ -546,39 +616,41 @@ export default function MarAIAssistant() {
       <div className="flex-1 flex items-center justify-center p-8 relative">
         <div className="flex flex-col items-center space-y-8 max-w-2xl mx-auto text-center">
           {/* Language Selector */}
-          <div className="relative z-50">
-            <button
-              onClick={() => setShowLanguageMenu(!showLanguageMenu)}
-              className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 text-white hover:bg-white/20 transition-all duration-300 border border-white/20 cursor-pointer shadow-lg hover:shadow-xl"
-            >
-              <span className="text-xl">{selectedLanguage.flag}</span>
-              <span className="font-medium">{selectedLanguage.name}</span>
-              <div className={`transform transition-transform duration-300 ${showLanguageMenu ? "rotate-180" : ""}`}>
-                ▼
-              </div>
-            </button>
+          {!showChat && (
+            <div className="relative z-50">
+              <button
+                onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 text-white hover:bg-white/20 transition-all duration-300 border border-white/20 cursor-pointer shadow-lg hover:shadow-xl"
+              >
+                <span className="text-xl">{selectedLanguage.flag}</span>
+                <span className="font-medium">{selectedLanguage.name}</span>
+                <div className={`transform transition-transform duration-300 ${showLanguageMenu ? "rotate-180" : ""}`}>
+                  ▼
+                </div>
+              </button>
 
-            {showLanguageMenu && (
-              <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-black/90 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl z-50 min-w-48 animate-in slide-in-from-top-2 duration-300">
-                {languages.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => {
-                      setSelectedLanguage(lang)
-                      setShowLanguageMenu(false)
-                      setCurrentMessage(`Language changed to ${lang.name}. Ready to assist you!`)
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/10 transition-all duration-200 first:rounded-t-2xl last:rounded-b-2xl cursor-pointer ${
-                      selectedLanguage.code === lang.code ? "bg-emerald-600/30 text-emerald-200" : "text-white"
-                    }`}
-                  >
-                    <span className="text-lg">{lang.flag}</span>
-                    <span className="font-medium">{lang.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {showLanguageMenu && (
+                <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-black/90 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl z-50 min-w-48 animate-in slide-in-from-top-2 duration-300">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        setSelectedLanguage(lang)
+                        setShowLanguageMenu(false)
+                        setCurrentMessage(`Language changed to ${lang.name}. Ready to assist you!`)
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/10 transition-all duration-200 first:rounded-t-2xl last:rounded-b-2xl cursor-pointer ${
+                        selectedLanguage.code === lang.code ? "bg-emerald-600/30 text-emerald-200" : "text-white"
+                      }`}
+                    >
+                      <span className="text-lg">{lang.flag}</span>
+                      <span className="font-medium">{lang.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Voice Orb */}
           <div className="relative flex items-center justify-center">
@@ -673,7 +745,6 @@ export default function MarAIAssistant() {
                 className="invert drop-shadow-lg"
               />
             </div>
-            {/* <p className="text-emerald-200 text-xl font-medium">Multifunctional AI Assistant.</p> */}
 
             <div className="flex items-center justify-center">
               <a
@@ -700,8 +771,13 @@ export default function MarAIAssistant() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSpeechEnabled(!speechEnabled)}
-              className="text-white/70 hover:text-white hover:bg-emerald-500/20 w-14 h-14 rounded-full transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl"
+              onClick={toggleSpeech}
+              className={`w-14 h-14 rounded-full transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl ${
+                speechEnabled 
+                  ? "text-white/70 hover:text-white hover:bg-emerald-500/20" 
+                  : "text-red-400/70 hover:text-red-400 hover:bg-red-500/20"
+              }`}
+              title={speechEnabled ? "Disable speech" : "Enable speech"}
             >
               {speechEnabled ? <Volume2 className="h-7 w-7" /> : <VolumeX className="h-7 w-7" />}
             </Button>
@@ -734,17 +810,6 @@ export default function MarAIAssistant() {
             >
               <Paperclip className="h-7 w-7" />
             </Button>
-
-            {isSpeaking && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={stopSpeaking}
-                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 w-14 h-14 rounded-full transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl animate-in slide-in-from-right-2"
-              >
-                <VolumeX className="h-7 w-7" />
-              </Button>
-            )}
           </div>
         </div>
       </div>
