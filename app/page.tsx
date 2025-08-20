@@ -41,6 +41,13 @@ const languages: Language[] = [
   { code: "zh-CN", name: "Chinese", flag: "🇨🇳" },
 ]
 
+function convertMarkdownLinksToHTML(text: string): string {
+  return text.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-300 hover:text-emerald-200 underline">$1</a>',
+  )
+}
+
 export default function MarAIAssistant() {
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -222,10 +229,10 @@ export default function MarAIAssistant() {
         .replace(/\bto\b/gi, "toh")
         .replace(/\bay\b/gi, "ah-ee")
         .replace(/\bog\b/gi, "ohg")
-        .replace(/\bug\b/gi, "oog")
+        .replace(/\bug/g, "oog")
         .replace(/\bpag\b/gi, "pahg")
         .replace(/\bmag\b/gi, "mahg")
-        .replace(/\bnag\b/gi, "nahg")
+        .replace(/\bnag/g, "nahg")
         .replace(/\bkaayo\b/gi, "kah-ah-yoh")
         .replace(/\bmao\b/gi, "mah-oh")
         .replace(/\bjud\b/gi, "jood")
@@ -496,7 +503,11 @@ export default function MarAIAssistant() {
                         </div>
                       )}
 
-                      <p className="text-sm leading-relaxed">{message.text}</p>
+                      <p
+                        className="text-sm leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: convertMarkdownLinksToHTML(message.text) }}
+                      />
+
                       <p
                         className={`text-xs mt-2 opacity-60 ${message.isUser ? "text-emerald-100" : "text-emerald-200"}`}
                       >
